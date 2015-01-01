@@ -13,7 +13,7 @@
   "author": "Manuel Vila <mvila@3base.com>",
   "license": "MIT",
   "dependencies": {
-    "kinda-store": "kinda/kinda-store",
+    "kinda-store-common": "kinda/kinda-store-common",
     "kinda-util": "kinda/kinda-util",
     "lodash": "^2.4.1"
   }

@@ -2,11 +2,11 @@
 
 var _ = require('lodash');
 var util = require('kinda-util').create();
-var Store = require('kinda-store/store');
+var CommonStore = require('kinda-store-common');
 
 var DEFAULT_LIMIT = 1000;
 
-var SQLStore = Store.extend('SQLStore', function() {
+var SQLStore = CommonStore.extend('SQLStore', function() {
   this.get = function *(key, options) {
     key = this.normalizeKey(key);
     if (!options) options = {};
