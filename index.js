@@ -4,7 +4,7 @@ var _ = require('lodash');
 var util = require('kinda-util').create();
 var CommonStore = require('kinda-store-common');
 
-var DEFAULT_LIMIT = 1000;
+var DEFAULT_LIMIT = 50000;
 
 var SQLStore = CommonStore.extend('SQLStore', function() {
   this.get = function *(key, options) {
@@ -69,27 +69,34 @@ var SQLStore = CommonStore.extend('SQLStore', function() {
 
     yield this.initializeDatabase();
 
-    var placeholders = '';
-    var encodedKeys = [];
-    for (var i = 0; i < keys.length; i++) {
-      if (i > 0) placeholders += ',';
-      placeholders += '?';
-      encodedKeys.push(this.encodeKey(keys[i]));
+    var encodedKeys = keys.map(this.encodeKey, this);
+
+    var result = [];
+    var allKeys = encodedKeys.slice(); // make a copy
+    while (allKeys.length) {
+      keys = allKeys.splice(0, 500); // take 500 keys
+      if (keys.length) {
+        var placeholders = '';
+        for (var i = 0; i < keys.length; i++) {
+          if (i > 0) placeholders += ',';
+          placeholders += '?';
+        }
+        var what = options.returnValues ? '*' : '`key`';
+        var where = '`key` IN (' + placeholders + ')';
+        var sql = 'SELECT ' + what + ' FROM `pairs` WHERE ' + where;
+        var res = yield this.connection.query(sql, keys);
+        result = result.concat(res);
+      }
     }
 
-    var what = options.returnValues ? '*' : '`key`';
-    var where = '`key` IN (' + placeholders + ')';
-    var sql = 'SELECT ' + what + ' FROM `pairs` WHERE ' + where;
-    var res = yield this.connection.query(sql, encodedKeys);
-
-    if (res.length !== encodedKeys.length && options.errorIfMissing)
+    if (result.length !== encodedKeys.length && options.errorIfMissing)
       throw new Error('some items not found');
 
     var sortedKeys = encodedKeys.map(function(value, index) {
       return { value: value, index: index };
     });
     sortedKeys = _.sortBy(sortedKeys, 'value');
-    var items = _.sortBy(res, function(item) {
+    var items = _.sortBy(result, function(item) {
       var index = _.sortedIndex(sortedKeys, { value: item.key }, 'value');
       return sortedKeys[index].index;
     }, this);
