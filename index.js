@@ -69,46 +69,42 @@ var SQLStore = CommonStore.extend('SQLStore', function() {
 
     yield this.initializeDatabase();
 
-    var encodedKeys = keys.map(this.encodeKey, this);
+    var results;
+    var resultsMap = [];
 
-    var result = [];
-    var allKeys = encodedKeys.slice(); // make a copy
-    while (allKeys.length) {
-      keys = allKeys.splice(0, 500); // take 500 keys
-      if (keys.length) {
+    var encodedKeys = keys.map(this.encodeKey, this);
+    while (encodedKeys.length) {
+      var someKeys = encodedKeys.splice(0, 500); // take 500 keys
+      if (someKeys.length) {
         var placeholders = '';
-        for (var i = 0; i < keys.length; i++) {
+        for (var i = 0; i < someKeys.length; i++) {
           if (i > 0) placeholders += ',';
           placeholders += '?';
         }
         var what = options.returnValues ? '*' : '`key`';
         var where = '`key` IN (' + placeholders + ')';
         var sql = 'SELECT ' + what + ' FROM `pairs` WHERE ' + where;
-        var res = yield this.connection.query(sql, keys);
-        result = result.concat(res);
+        results = yield this.connection.query(sql, someKeys);
+        results.forEach(function(item) {
+          var key = this.decodeKey(item.key);
+          var res = { key: key };
+          if (options.returnValues)
+           res.value = this.decodeValue(item.value);
+          resultsMap[key.toString()] = res;
+        }, this);
       }
     }
 
-    if (result.length !== encodedKeys.length && options.errorIfMissing)
+    results = [];
+    keys.forEach(function(key) {
+      var res = resultsMap[key.toString()];
+      if (res) results.push(res);
+    });
+
+    if (results.length !== keys.length && options.errorIfMissing)
       throw new Error('some items not found');
 
-    var sortedKeys = encodedKeys.map(function(value, index) {
-      return { value: value, index: index };
-    });
-    sortedKeys = _.sortBy(sortedKeys, 'value');
-    var items = _.sortBy(result, function(item) {
-      var index = _.sortedIndex(sortedKeys, { value: item.key }, 'value');
-      return sortedKeys[index].index;
-    }, this);
-
-    var items = items.map(function(item) {
-      var res = { key: this.decodeKey(item.key) };
-      if (options.returnValues)
-       res.value = this.decodeValue(item.value);
-      return res;
-    }, this);
-
-    return items;
+    return results;
   };
 
   this.putMany = function *(items, options) {
