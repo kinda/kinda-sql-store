@@ -70,7 +70,7 @@ var SQLStore = CommonStore.extend('SQLStore', function() {
     yield this.initializeDatabase();
 
     var results;
-    var resultsMap = [];
+    var resultsMap = {};
 
     var encodedKeys = keys.map(this.encodeKey, this);
     while (encodedKeys.length) {
