@@ -115,9 +115,8 @@ var SQLStore = CommonStore.extend('SQLStore', function() {
     // TODO
   };
 
-  // options: prefix, start, end, reverse, limit,
-  //   startBefore, startAfter, endBefore, endAfter,
-  //   returnValues
+  // options: prefix, start, startAfter, end, endBefore,
+  //   reverse, limit, returnValues
   this.getRange = function *(options) {
     if (!options) options = {};
     options = this.normalizeKeySelectors(options);
@@ -146,8 +145,7 @@ var SQLStore = CommonStore.extend('SQLStore', function() {
     return items;
   };
 
-  // options: prefix, start, end
-  //   startBefore, startAfter, endBefore, endAfter,
+  // options: prefix, start, startAfter, end, endBefore
   this.getCount = function *(options) {
     if (!options) options = {};
     options = this.normalizeKeySelectors(options);
