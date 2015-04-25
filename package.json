@@ -1,10 +1,10 @@
 {
-  "name": "kinda-store-sql",
+  "name": "kinda-sql-store",
   "version": "0.1.6",
   "description": "...",
   "repository": {
     "type": "git",
-    "url": "git://github.com/kinda/kinda-store-sql"
+    "url": "git://github.com/kinda/kinda-sql-store"
   },
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,7 @@
   "author": "Manuel Vila <mvila@3base.com>",
   "license": "MIT",
   "dependencies": {
-    "kinda-store-common": "^0.1.0",
+    "kinda-abstract-store": "^0.1.6",
     "kinda-util": "^0.1.0",
     "lodash": "^3.3.0"
   }
