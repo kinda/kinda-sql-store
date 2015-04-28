@@ -52,8 +52,9 @@ var SQLStore = AbstractStore.extend('SQLStore', function() {
     yield this.initializeDatabase();
     var sql = 'DELETE FROM `pairs` WHERE `key`=?';
     var res = yield this.connection.query(sql, [this.encodeKey(key)]);
-    if (!res.affectedRows && options.errorIfMissing)
-      throw new Error('item not found');
+    if (!res.affectedRows && options.errorIfMissing) {
+      throw new Error('item not found (key=\'' + JSON.stringify(key) + '\')');
+    }
   };
 
   this.getMany = function *(keys, options) {
@@ -101,8 +102,9 @@ var SQLStore = AbstractStore.extend('SQLStore', function() {
       if (res) results.push(res);
     });
 
-    if (results.length !== keys.length && options.errorIfMissing)
+    if (results.length !== keys.length && options.errorIfMissing) {
       throw new Error('some items not found');
+    }
 
     return results;
   };
