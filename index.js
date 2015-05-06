@@ -55,6 +55,7 @@ var SQLStore = AbstractStore.extend('SQLStore', function() {
     if (!res.affectedRows && options.errorIfMissing) {
       throw new Error('item not found (key=\'' + JSON.stringify(key) + '\')');
     }
+    return !!res.affectedRows;
   };
 
   this.getMany = function *(keys, options) {
