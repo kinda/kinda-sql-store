@@ -21,7 +21,7 @@ let SQLStore = AbstractStore.extend('SQLStore', function() {
 
   this.put = function *(key, value, options = {}) {
     key = this.normalizeKey(key);
-    _.defaults(options, { errorIfMissing: true });
+    _.defaults(options, { createIfMissing: true });
     yield this.initializeDatabase();
     let encodedKey = this.encodeKey(key);
     let encodedValue = this.encodeValue(value);
