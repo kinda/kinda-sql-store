@@ -6,12 +6,12 @@ let AbstractStore = require('kinda-abstract-store');
 const DEFAULT_LIMIT = 50000;
 
 let SQLStore = AbstractStore.extend('SQLStore', function() {
-  this.get = function *(key, options = {}) {
+  this.get = async function(key, options = {}) {
     key = this.normalizeKey(key);
     _.defaults(options, { errorIfMissing: true });
-    yield this.initializeDatabase();
+    await this.initializeDatabase();
     let sql = 'SELECT `value` FROM `pairs` WHERE `key`=?';
-    let res = yield this.connection.query(sql, [this.encodeKey(key)]);
+    let res = await this.connection.query(sql, [this.encodeKey(key)]);
     if (!res.length) {
       if (options.errorIfMissing) throw new Error('item not found');
       return undefined;
@@ -19,45 +19,45 @@ let SQLStore = AbstractStore.extend('SQLStore', function() {
     return this.decodeValue(res[0].value);
   };
 
-  this.put = function *(key, value, options = {}) {
+  this.put = async function(key, value, options = {}) {
     key = this.normalizeKey(key);
     _.defaults(options, { createIfMissing: true });
-    yield this.initializeDatabase();
+    await this.initializeDatabase();
     let encodedKey = this.encodeKey(key);
     let encodedValue = this.encodeValue(value);
     let sql;
     if (options.errorIfExists) {
       sql = 'INSERT INTO `pairs` (`key`, `value`) VALUES(?,?)';
-      yield this.connection.query(sql, [encodedKey, encodedValue]);
+      await this.connection.query(sql, [encodedKey, encodedValue]);
     } else if (options.createIfMissing) {
       sql = 'REPLACE INTO `pairs` (`key`, `value`) VALUES(?,?)';
-      yield this.connection.query(sql, [encodedKey, encodedValue]);
+      await this.connection.query(sql, [encodedKey, encodedValue]);
     } else {
       sql = 'UPDATE `pairs` SET `value`=? WHERE `key`=?';
-      let res = yield this.connection.query(sql, [encodedValue, encodedKey]);
+      let res = await this.connection.query(sql, [encodedValue, encodedKey]);
       if (!res.affectedRows) throw new Error('item not found');
     }
   };
 
-  this.del = function *(key, options = {}) {
+  this.del = async function(key, options = {}) {
     key = this.normalizeKey(key);
     _.defaults(options, { errorIfMissing: true });
-    yield this.initializeDatabase();
+    await this.initializeDatabase();
     let sql = 'DELETE FROM `pairs` WHERE `key`=?';
-    let res = yield this.connection.query(sql, [this.encodeKey(key)]);
+    let res = await this.connection.query(sql, [this.encodeKey(key)]);
     if (!res.affectedRows && options.errorIfMissing) {
       throw new Error('item not found (key=\'' + JSON.stringify(key) + '\')');
     }
     return !!res.affectedRows;
   };
 
-  this.getMany = function *(keys, options = {}) {
+  this.getMany = async function(keys, options = {}) {
     if (!_.isArray(keys)) throw new Error('invalid keys (should be an array)');
     if (!keys.length) return [];
     keys = keys.map(this.normalizeKey, this);
     _.defaults(options, { errorIfMissing: true, returnValues: true });
 
-    yield this.initializeDatabase();
+    await this.initializeDatabase();
 
     let results;
     let resultsMap = {};
@@ -74,7 +74,7 @@ let SQLStore = AbstractStore.extend('SQLStore', function() {
         let what = options.returnValues ? '*' : '`key`';
         let where = '`key` IN (' + placeholders + ')';
         let sql = 'SELECT ' + what + ' FROM `pairs` WHERE ' + where;
-        results = yield this.connection.query(sql, someKeys);
+        results = await this.connection.query(sql, someKeys);
         results.forEach(function(item) { // eslint-disable-line no-loop-func
           let key = this.decodeKey(item.key);
           let res = { key };
@@ -97,25 +97,25 @@ let SQLStore = AbstractStore.extend('SQLStore', function() {
     return results;
   };
 
-  this.putMany = function *(items, options = {}) { // eslint-disable-line
+  this.putMany = async function(items, options = {}) { // eslint-disable-line
     // TODO
   };
 
-  this.delMany = function *(key, options = {}) { // eslint-disable-line
+  this.delMany = async function(key, options = {}) { // eslint-disable-line
     // TODO
   };
 
   // options: prefix, start, startAfter, end, endBefore,
   //   reverse, limit, returnValues
-  this.getRange = function *(options = {}) {
+  this.getRange = async function(options = {}) {
     options = this.normalizeKeySelectors(options);
     _.defaults(options, { limit: DEFAULT_LIMIT, returnValues: true });
-    yield this.initializeDatabase();
+    await this.initializeDatabase();
     let what = options.returnValues ? '*' : '`key`';
     let sql = 'SELECT ' + what + ' FROM `pairs` WHERE `key` BETWEEN ? AND ?';
     sql += ' ORDER BY `key`' + (options.reverse ? ' DESC' : '');
     sql += ' LIMIT ' + options.limit;
-    let items = yield this.connection.query(sql, [
+    let items = await this.connection.query(sql, [
       this.encodeKey(options.start),
       this.encodeKey(options.end)
     ]);
@@ -128,11 +128,11 @@ let SQLStore = AbstractStore.extend('SQLStore', function() {
   };
 
   // options: prefix, start, startAfter, end, endBefore
-  this.getCount = function *(options = {}) {
+  this.getCount = async function(options = {}) {
     options = this.normalizeKeySelectors(options);
-    yield this.initializeDatabase();
+    await this.initializeDatabase();
     let sql = 'SELECT COUNT(*) FROM `pairs` WHERE `key` BETWEEN ? AND ?';
-    let res = yield this.connection.query(sql, [
+    let res = await this.connection.query(sql, [
       this.encodeKey(options.start),
       this.encodeKey(options.end)
     ]);
@@ -141,11 +141,11 @@ let SQLStore = AbstractStore.extend('SQLStore', function() {
     return res[0]['COUNT(*)'];
   };
 
-  this.delRange = function *(options = {}) {
+  this.delRange = async function(options = {}) {
     options = this.normalizeKeySelectors(options);
-    yield this.initializeDatabase();
+    await this.initializeDatabase();
     let sql = 'DELETE FROM `pairs` WHERE `key` BETWEEN ? AND ?';
-    let res = yield this.connection.query(sql, [
+    let res = await this.connection.query(sql, [
       this.encodeKey(options.start),
       this.encodeKey(options.end)
     ]);
