@@ -1,9 +1,11 @@
 'use strict';
 
 let _ = require('lodash');
+let util = require('kinda-util').create();
 let AbstractStore = require('kinda-abstract-store');
 
 const DEFAULT_LIMIT = 50000;
+const RESPIRATION_RATE = 250;
 
 let SQLStore = AbstractStore.extend('SQLStore', function() {
   this.get = async function(key, options = {}) {
@@ -57,6 +59,8 @@ let SQLStore = AbstractStore.extend('SQLStore', function() {
     keys = keys.map(this.normalizeKey, this);
     _.defaults(options, { errorIfMissing: true, returnValues: true });
 
+    let iterationsCount = 0;
+
     await this.initializeDatabase();
 
     let results;
@@ -75,20 +79,22 @@ let SQLStore = AbstractStore.extend('SQLStore', function() {
         let where = '`key` IN (' + placeholders + ')';
         let sql = 'SELECT ' + what + ' FROM `pairs` WHERE ' + where;
         results = await this.connection.query(sql, someKeys);
-        results.forEach(function(item) { // eslint-disable-line no-loop-func
+        for (let item of results) {
           let key = this.decodeKey(item.key);
           let res = { key };
           if (options.returnValues) res.value = this.decodeValue(item.value);
           resultsMap[key.toString()] = res;
-        }, this);
+          if (++iterationsCount % RESPIRATION_RATE === 0) await util.timeout(0);
+        }
       }
     }
 
     results = [];
-    keys.forEach(function(key) {
+    for (let key of keys) {
       let res = resultsMap[key.toString()];
       if (res) results.push(res);
-    });
+      if (++iterationsCount % RESPIRATION_RATE === 0) await util.timeout(0);
+    }
 
     if (results.length !== keys.length && options.errorIfMissing) {
       throw new Error('some items not found');
@@ -110,6 +116,7 @@ let SQLStore = AbstractStore.extend('SQLStore', function() {
   this.getRange = async function(options = {}) {
     options = this.normalizeKeySelectors(options);
     _.defaults(options, { limit: DEFAULT_LIMIT, returnValues: true });
+    let iterationsCount = 0;
     await this.initializeDatabase();
     let what = options.returnValues ? '*' : '`key`';
     let sql = 'SELECT ' + what + ' FROM `pairs` WHERE `key` BETWEEN ? AND ?';
@@ -119,12 +126,14 @@ let SQLStore = AbstractStore.extend('SQLStore', function() {
       this.encodeKey(options.start),
       this.encodeKey(options.end)
     ]);
-    items = items.map(function(item) {
-      let res = { key: this.decodeKey(item.key) };
-      if (options.returnValues) res.value = this.decodeValue(item.value);
-      return res;
-    }, this);
-    return items;
+    let decodedItems = [];
+    for (let item of items) {
+      let decodedItem = { key: this.decodeKey(item.key) };
+      if (options.returnValues) decodedItem.value = this.decodeValue(item.value);
+      decodedItems.push(decodedItem);
+      if (++iterationsCount % RESPIRATION_RATE === 0) await util.timeout(0);
+    }
+    return decodedItems;
   };
 
   // options: prefix, start, startAfter, end, endBefore
